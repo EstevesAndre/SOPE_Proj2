@@ -3,7 +3,7 @@
 
 typedef struct
 {
-        int client_id;
+        unsigned long client_id;
         int n_seats;
         int array_cnt;
         int error_status;
