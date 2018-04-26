@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 time_t start = time(NULL);
 int n_seats, n_offices, open_time;
 
-argchk(argc, argv, &n_seats, &n_offices, &open_time);
+server_argchk(argc, argv, &n_seats, &n_offices, &open_time);
 
 while(1) {
     int seats[n_seats];
@@ -63,7 +63,7 @@ void server_argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* op
 
         if(*open_time <= 0)
         {
-            printf("Invalid argument: &s\n", argv[3]);
+            printf("Invalid argument: %s\n", argv[3]);
             exit(1);
         }  
     }
@@ -105,7 +105,7 @@ void parseRequest(request* r, char* info, int n_seats)
             r->error_status = REQ_ERR_PARAM_OTHER;
             return;
         }
-    r->client_id = strtol(info, delim_1, 10);
+    r->client_id = strtol(info, &delim_1, 10);
     if(r->client_id == 0)
         {
             r->error_status = REQ_ERR_PARAM_OTHER;
@@ -118,7 +118,7 @@ void parseRequest(request* r, char* info, int n_seats)
             r->error_status = REQ_ERR_PARAM_OTHER;
             return;
         }
-    r->n_seats = strtol(delim_1, delim_2, 10);
+    r->n_seats = strtol(delim_1, &delim_2, 10);
     if(r->n_seats == 0)
         {
             r->error_status = REQ_ERR_PARAM_OTHER;
@@ -128,9 +128,11 @@ void parseRequest(request* r, char* info, int n_seats)
     delim_1 = delim_2;
     delim_2 = strtok(NULL, " ");
 
+    r->array_cnt = 0;
+
     while(delim_2 != NULL)
     {
-        int i = strtol(delim_1, delim_2, 10);
+        int i = strtol(delim_1, &delim_2, 10);
         if(i == 0)
         {
             r->error_status = REQ_ERR_PARAM_OTHER;
@@ -168,7 +170,7 @@ void requestErrorChk(request* r, int n_seats)
     int i;
     for(i = 0; i < r->array_cnt; i++)
     {
-        if(r->seats[i] < 1 || r->seats > n_seats)
+        if(r->seats[i] < 1 || r->array_cnt > n_seats)
         {
             r->error_status = REQ_ERR_SEAT_ID_INV;
             return;
