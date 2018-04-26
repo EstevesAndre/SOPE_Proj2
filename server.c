@@ -29,7 +29,7 @@ while(1) {
 }
 }
 
-void argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* open_time)
+void server_argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* open_time)
 {
     if(argc == 1)
     {
@@ -38,7 +38,7 @@ void argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* open_time
     }
     if(argc != 4)
     {
-        printf("Invalid number of arguments: &s\n", argv[0]);
+        printf("Invalid number of arguments: %s\n", argv[0]);
         exit(1);
     }
     else
@@ -47,7 +47,7 @@ void argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* open_time
 
         if(*n_seats <= 0 || *n_seats > MAX_ROOM_SEATS)
         {
-            printf("Invalid argument: &s\n", argv[1]);
+            printf("Invalid argument: %s\n", argv[1]);
             exit(1);
         } 
 
@@ -55,7 +55,7 @@ void argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* open_time
 
         if(*n_seats <= 0)
         {
-            printf("Invalid argument: &s\n", argv[2]);
+            printf("Invalid argument: %s\n", argv[2]);
             exit(1);
         } 
 
