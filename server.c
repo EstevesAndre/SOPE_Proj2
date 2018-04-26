@@ -4,8 +4,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h> 
+#include <string.h>
 #include "server.h"
 #include "constants.h"
+#include "request.h"
 
 int main(int argc, char *argv[])
 {
@@ -93,4 +95,85 @@ int createRequestFifo()
     }
 
     return fd;
+}
+
+void parseRequest(request* r, char* info, int n_seats)
+{
+    char * delim_1 = strtok(info, " ");
+    if(delim_1 == NULL)
+        {
+            r->error_status = REQ_ERR_PARAM_OTHER;
+            return;
+        }
+    r->client_id = strtol(info, delim_1, 10);
+    if(r->client_id == 0)
+        {
+            r->error_status = REQ_ERR_PARAM_OTHER;
+            return;
+        }
+
+    char * delim_2 = strtok(NULL, " ");
+    if(delim_2 == NULL)
+        {
+            r->error_status = REQ_ERR_PARAM_OTHER;
+            return;
+        }
+    r->n_seats = strtol(delim_1, delim_2, 10);
+    if(r->n_seats == 0)
+        {
+            r->error_status = REQ_ERR_PARAM_OTHER;
+            return;
+        }
+
+    delim_1 = delim_2;
+    delim_2 = strtok(NULL, " ");
+
+    while(delim_2 != NULL)
+    {
+        int i = strtol(delim_1, delim_2, 10);
+        if(i == 0)
+        {
+            r->error_status = REQ_ERR_PARAM_OTHER;
+            return;
+        }
+        r->array_cnt++;
+        r->seats = realloc(r->seats, r->array_cnt * sizeof(int));
+        r->seats[r->array_cnt - 1] = i;
+        delim_1 = delim_2;
+        delim_2 = strtok(NULL, " ");
+    }
+
+    int i = strtol(delim_1, NULL, 10);
+    r->array_cnt++;
+    r->seats = realloc(r->seats, r->array_cnt * sizeof(int));
+    r->seats[r->array_cnt - 1] = i;
+
+    requestErrorChk(r, n_seats);
+}
+
+void requestErrorChk(request* r, int n_seats)
+{
+    if(r->n_seats > MAX_ROOM_SEATS)
+    {
+        r->error_status = REQ_ERR_OVER_MAX_SEATS;
+        return;
+    }
+
+    if(r->n_seats > r->array_cnt)
+    {
+        r->error_status = REQ_ERR_UNDER_SEAT_ID;
+        return;
+    }
+
+    int i;
+    for(i = 0; i < r->array_cnt; i++)
+    {
+        if(r->seats[i] < 1 || r->seats > n_seats)
+        {
+            r->error_status = REQ_ERR_SEAT_ID_INV;
+            return;
+        }
+    }
+
+
 }
