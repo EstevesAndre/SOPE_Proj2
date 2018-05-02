@@ -13,6 +13,7 @@
 
 pthread_mutex_t mut=PTHREAD_MUTEX_INITIALIZER;
 request* buffer;
+int occupied_seats;
 
 int main(int argc, char *argv[])
 {
@@ -27,6 +28,7 @@ initSeats(seats, n_seats);
 pthread_t offices[n_offices];
 
 buffer = NULL;
+occupied_seats = 0;
 
 int i;
 for (i=0; i<n_offices; i++) 
@@ -189,7 +191,13 @@ void parseRequest(request* r, char* info, int n_seats)
 
 void requestErrorChk(request* r, int n_seats)
 {
-    if(r->n_seats > MAX_ROOM_SEATS)
+    if(occupied_seats = n_seats)
+    {
+        r->error_status = REQ_ERR_ROOM_FULL;
+        return;
+    }
+
+    if(r->n_seats > MAX_CLI_SEATS)
     {
         r->error_status = REQ_ERR_OVER_MAX_SEATS;
         return;
