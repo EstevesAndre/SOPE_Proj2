@@ -5,9 +5,14 @@
 #include <sys/stat.h>
 #include <sys/file.h> 
 #include <string.h>
+#include <pthread.h> 
+#include <unistd.h> 
 #include "server.h"
 #include "constants.h"
 #include "request.h"
+
+pthread_mutex_t mut=PTHREAD_MUTEX_INITIALIZER;
+request* buffer;
 
 int main(int argc, char *argv[])
 {
@@ -16,15 +21,44 @@ int n_seats, n_offices, open_time;
 
 server_argchk(argc, argv, &n_seats, &n_offices, &open_time);
 
+int seats[n_seats];
+initSeats(seats, n_seats);
+
+pthread_t offices[n_offices];
+
+buffer = NULL;
+
+int i;
+for (i=0; i<n_offices; i++) 
+{
+    pthread_create(&offices[i], NULL, NULL, seats);
+}
+
+int requests = createRequestFifo();
+request r;
+
 while(1) {
-    int seats[n_seats];
-    initSeats(seats, n_seats);
+    char* info = malloc(100 * sizeof(char));
+    read(requests, info, 100);
+    parseRequest(&r, info, n_seats);
 
-    int requests = createRequestFifo();
+    while(buffer != NULL)
+    {
+        if (time(NULL) > start + open_time)
+        {
+            printf("Timeout. Server closing.\n");
+            close(requests);
+            exit(0); 
+        }
+    }
 
-    if (time(NULL) > start + open_time) {
-        //timeout
-        break;
+    buffer = &r;
+
+    if (time(NULL) > start + open_time) 
+    {
+        printf("Timeout. Server closing.\n");
+        close(requests);
+        exit(0); 
     }
 }
 }
