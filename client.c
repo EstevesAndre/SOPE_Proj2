@@ -15,19 +15,21 @@ int main(int argc, char *argv[])
 {
 signal(SIGALRM, timeout);
 int n_seats, open_time;
-char* seats_list = NULL;
+char* seats_list = malloc(100* sizeof(char));
 
 client_argchk(argc, argv, &open_time, &n_seats, seats_list);
+
 alarm(open_time);
 
-requests_fd = open("requests", O_WRONLY);
+requests_fd = open("requests", O_WRONLY | O_NONBLOCK);
 
 char ans_name[100];
 snprintf(ans_name, 100, "ans%lu", (unsigned long)getpid());
 mkfifo(ans_name, 0660);
-answer_fd = open(ans_name, O_RDONLY);
 
 sendMessage(requests_fd, n_seats, seats_list);
+
+answer_fd = open(ans_name, O_RDONLY);
 
 char* reserve = malloc(100 * sizeof(char));
 
@@ -79,7 +81,6 @@ void client_argchk(int argc, char* argv[], int* open_time, int* n_seats, char* s
             exit(1);
         } 
 
-        seats_list = malloc(100 *  sizeof(char));
         strcpy(seats_list, argv[3]); 
     }
 }
@@ -95,7 +96,8 @@ void timeout(int signo)
 void sendMessage(int fd, int n_seats, char* seats_list)
 {
     char message[200];
-    snprintf(message, 200, "%d %d %s", getpid(), n_seats, seats_list); 
+    snprintf(message, 200, "%d %d %s", getpid(), n_seats, seats_list);
+    write(fd, message, 200); 
     
 }
 

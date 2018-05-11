@@ -22,7 +22,7 @@ int n_seats, n_offices, open_time;
 
 server_argchk(argc, argv, &n_seats, &n_offices, &open_time);
 
-int seats[n_seats];
+Seat seats[n_seats];
 initSeats(seats, n_seats);
 
 pthread_t offices[n_offices];
@@ -33,28 +33,32 @@ occupied_seats = 0;
 int i;
 for (i=0; i<n_offices; i++) 
 {
-    pthread_create(&offices[i], NULL, NULL, seats);
+    pthread_create(&offices[i], NULL, office_f, seats);
 }
 
 int requests = createRequestFifo();
 request r;
 
+
 while(1) {
     char* info = malloc(100 * sizeof(char));
-    read(requests, info, 100);
-    parseRequest(&r, info, n_seats);
-
-    while(buffer != NULL)
+    int i = read(requests, info, 100);
+    if(i != -1)
     {
-        if (time(NULL) > start + open_time)
-        {
-            printf("Timeout. Server closing.\n");
-            close(requests);
-            exit(0); 
-        }
-    }
+        parseRequest(&r, info, n_seats);
 
-    buffer = &r;
+        while(buffer != NULL)
+        {
+            if (time(NULL) > start + open_time)
+            {
+                printf("Timeout. Server closing.\n");
+                close(requests);
+                exit(0); 
+            }
+        }
+        buffer = &r;
+        r.error_status = 0;
+    }
 
     if (time(NULL) > start + open_time) 
     {
@@ -95,7 +99,7 @@ void server_argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* op
             exit(1);
         } 
 
-        *open_time = strtol(argv[2], NULL, 10);
+        *open_time = strtol(argv[3], NULL, 10);
 
         if(*open_time <= 0)
         {
@@ -116,20 +120,13 @@ void initSeats(int seats[], int n_seats)
 
 int createRequestFifo()
 {
-    int i = mkfifo("requests",0660);
-    if(i != 0)
-    {
-        printf("Failed to create requests fifo\n");
-        exit(2);
-    }
-
-    int fd = open("requests",O_RDONLY);
+    mkfifo("requests",0660);
+    int fd = open("requests",O_RDONLY | O_NONBLOCK);
     if(fd == -1)
     {
         printf("Failed to create requests fifo\n");
         exit(2);
     }
-
     return fd;
 }
 
@@ -141,7 +138,7 @@ void parseRequest(request* r, char* info, int n_seats)
             r->error_status = REQ_ERR_PARAM_OTHER;
             return;
         }
-    r->client_id = strtol(info, &delim_1, 10);
+    r->client_id = strtol(info, NULL, 10);
     if(r->client_id == 0)
         {
             r->error_status = REQ_ERR_PARAM_OTHER;
@@ -154,7 +151,7 @@ void parseRequest(request* r, char* info, int n_seats)
             r->error_status = REQ_ERR_PARAM_OTHER;
             return;
         }
-    r->n_seats = strtol(delim_1, &delim_2, 10);
+    r->n_seats = strtol(delim_2, NULL, 10);
     if(r->n_seats == 0)
         {
             r->error_status = REQ_ERR_PARAM_OTHER;
@@ -165,10 +162,11 @@ void parseRequest(request* r, char* info, int n_seats)
     delim_2 = strtok(NULL, " ");
 
     r->array_cnt = 0;
+    r->seats = malloc(0);
 
     while(delim_2 != NULL)
     {
-        int i = strtol(delim_1, &delim_2, 10);
+        int i = strtol(delim_1, NULL, 10);
         if(i == 0)
         {
             r->error_status = REQ_ERR_PARAM_OTHER;
@@ -191,7 +189,7 @@ void parseRequest(request* r, char* info, int n_seats)
 
 void requestErrorChk(request* r, int n_seats)
 {
-    if(occupied_seats = n_seats)
+    if(occupied_seats == n_seats)
     {
         r->error_status = REQ_ERR_ROOM_FULL;
         return;
@@ -220,4 +218,114 @@ void requestErrorChk(request* r, int n_seats)
     }
 
 
+}
+
+void *office_f(void *nr)
+{
+   while(1)
+   {
+       pthread_mutex_lock(&mut);
+       if(buffer != NULL)
+       {
+           request* r = buffer;
+           buffer = NULL;
+           requestHandle((Seat*) nr, r);
+           DELAY();
+           pthread_mutex_unlock(&mut);
+           continue;
+       }
+       pthread_mutex_unlock(&mut);
+   }
+}
+
+void requestHandle(Seat* seats, request* r)
+{
+    if(r->error_status != 0)
+    {
+        sendMessagetoClient(r->client_id, r->error_status, NULL);
+        return;
+    }
+
+    int reserve_cnt = 0;
+    int preferences = 0;
+    int reserved_seats[MAX_CLI_SEATS + 1] = {0};
+    reserved_seats[0] = -1;
+
+    while(reserve_cnt < r->n_seats)
+    {
+        if(preferences == r->array_cnt)
+        {
+            int i = 0;
+            while(reserved_seats[i] != -1)
+            {
+                freeSeat(seats, reserved_seats[i]);
+                i++;
+            }
+            sendMessagetoClient(r->client_id, REQ_ERR_UNNAV_SEAT, NULL);
+            return;
+        }
+
+        if(isSeatFree(seats, *(r->seats + preferences)) == 1)
+        {
+            bookSeat(seats, *(r->seats + preferences), r->client_id);
+            reserved_seats[reserve_cnt] = *(r->seats + preferences);
+            reserved_seats[reserve_cnt + 1] = -1;
+            reserve_cnt++;
+        }
+
+        preferences++;
+    }
+
+    char message[1000];
+    char aux[8];
+
+    snprintf(message, 1000, "%d", r->n_seats);
+    
+    int i;
+    for(i = 0; i < reserve_cnt; i++)
+    {
+        snprintf(aux, 8, " %d",reserved_seats[i]);
+        strcat(message, aux);
+    }
+
+    strcat(message, "\n");
+    sendMessagetoClient(r->client_id, REQ_SUCCESSFUL, message);
+}
+
+int isSeatFree(Seat *seats, int seatNum)
+{
+    if(*(seats + seatNum - 1) == 0)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+void bookSeat(Seat *seats, int seatNum, int clientId)
+{
+    *(seats + seatNum - 1) = clientId;
+}
+
+void freeSeat(Seat *seats, int seatNum)
+{
+    *(seats + seatNum - 1) = 0;
+}
+
+void sendMessagetoClient(int clientId, int error_status, char* msg)
+{
+    char ans_name[100];
+    snprintf(ans_name, 100, "ans%lu", (unsigned long)clientId);
+    int answer_fd = open(ans_name, O_WRONLY);
+
+    char aux[8];
+    snprintf(aux, 8, "%d", error_status);
+    write(answer_fd, aux, 8);
+
+    if(msg != NULL)
+    {
+        write(answer_fd, msg, 1000);
+    }
+
+    close(answer_fd);
 }
