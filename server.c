@@ -33,7 +33,9 @@ int main(int argc, char *argv[])
         buffer = NULL;
         occupied_seats = 0;
 
-        descrit_slog = open(logfile, O_WRONLY | O_APPEND | O_CREAT, 0644);
+        char *server_logfile = "slog.txt";
+
+        descrit_slog = open(server_logfile, O_WRONLY | O_APPEND | O_CREAT, 0644);
 
         int i;
 
@@ -77,7 +79,7 @@ int main(int argc, char *argv[])
                                                 for (i=1; i<=n_offices; i++)
                                                 {
                                                         char numb[3]; // 2 caracteres
-                                                        sprintf(numb, sizeof numb, "%02d", i);
+                                                        snprintf(numb, sizeof numb, "%02d", i);
 
                                                         char* ch = "-CLOSED";
                                                         char* result = malloc(strlen(ch) + strlen(numb) + 2);

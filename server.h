@@ -21,6 +21,6 @@ void requestHandle(Seat* seats, request* r);
 int isSeatFree(Seat *seats, int seatNum);
 void bookSeat(Seat *seats, int seatNum, int clientId);
 void freeSeat(Seat *seats, int seatNum);
-void sendMessagetoClient(int clientId, int error_status, char* msg, char* msg2log);
+void sendMessagetoClient(request *r, int error_status, char* msg, char* msg2log);
 
 #endif
