@@ -17,6 +17,7 @@ request* buffer;
 int occupied_seats;
 
 int descrit_slog = -1;
+int descrit_sbook = -1;
 
 int main(int argc, char *argv[])
 {
@@ -34,15 +35,17 @@ int main(int argc, char *argv[])
         occupied_seats = 0;
 
         char *server_logfile = "slog.txt";
-
         descrit_slog = open(server_logfile, O_WRONLY | O_APPEND | O_CREAT, 0644);
+
+        char *server_booking = "sbook.txt";
+        descrit_sbook = open(server_booking, O_WRONLY | O_APPEND | O_CREAT, 0644);
 
         int i;
         for (i=1; i<=n_offices; i++)
         {
                 if(descrit_slog != -1)
                 {
-                        char numb[33];
+                        char numb[3];
                         sprintf(numb,"%02d", i);
 
                         char* ch = "-OPEN";
@@ -75,7 +78,7 @@ int main(int argc, char *argv[])
                                         remove("requests");
                                         if(descrit_slog != -1)
                                         {
-                                                
+
                                                 for (i=1; i<=n_offices; i++)
                                                 {
                                                         char numb[3]; // 2 caracteres
@@ -93,6 +96,10 @@ int main(int argc, char *argv[])
                                                 char * end = "SERVER CLOSED\n";
                                                 write(descrit_slog,end,strlen(end));
                                                 close(descrit_slog);
+                                        }
+                                        if(descrit_sbook != -1)
+                                        {
+                                                close(descrit_sbook);
                                         }
                                         exit(0);
                                 }
@@ -125,6 +132,10 @@ int main(int argc, char *argv[])
                                 char * end = "SERVER CLOSED\n";
                                 write(descrit_slog,end,strlen(end));
                                 close(descrit_slog);
+                        }
+                        if(descrit_sbook != -1)
+                        {
+                                close(descrit_sbook);
                         }
                         exit(0);
                 }
@@ -188,6 +199,10 @@ FILE* createRequestFifo()
         if(f == NULL)
         {
                 printf("Failed to create requests fifo\n");
+                if(descrit_sbook != -1)
+                        close(descrit_sbook);
+                if(descrit_slog != -1)
+                        close(descrit_slog);
                 exit(2);
         }
         return f;
@@ -244,9 +259,9 @@ void parseRequest(request* r, char* info, int n_seats)
         }
 
         /*int i = strtol(delim_1, NULL, 10);
-        r->array_cnt++;
-        r->seats = realloc(r->seats, r->array_cnt * sizeof(int));
-        r->seats[r->array_cnt - 1] = i;*/
+           r->array_cnt++;
+           r->seats = realloc(r->seats, r->array_cnt * sizeof(int));
+           r->seats[r->array_cnt - 1] = i;*/
 
         requestErrorChk(r, n_seats);
 }
@@ -357,6 +372,14 @@ void requestHandle(Seat* seats, request* r)
                 snprintf(nrseat, 6, " %04d",reserved_seats[i]);
                 strcat(message2log,nrseat);
 
+                if(descrit_sbook != -1)
+                {
+                        char * sbooklog = malloc(strlen(nrseat)+ 2);
+                        strcpy(sbooklog,nrseat);
+                        strcat(sbooklog,"\n");
+                        write(descrit_sbook,sbooklog,strlen(sbooklog));
+                }
+
         }
 
         strcat(message, "\n");
@@ -385,7 +408,7 @@ void freeSeat(Seat *seats, int seatNum)
 }
 
 void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
-{      
+{
         char ans_name[100];
         snprintf(ans_name, 100, "ans%lu", (unsigned long)r->client_id);
 
@@ -401,8 +424,6 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
         {
                 fprintf(answer_fd, "%s", msg);
         }
-
-        //fclose(answer_fd);
 
         if(descrit_slog != -1)
         {
@@ -449,22 +470,22 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
                 if(msg == NULL)
                 {
                         switch (error_status) {
-                        case -1:
+                        case REQ_ERR_OVER_MAX_SEATS:
                                 strcat(result," MAX\n");
                                 break;
-                        case -2:
+                        case REQ_ERR_UNDER_SEAT_ID:
                                 strcat(result," NST\n");
                                 break;
-                        case -3:
+                        case REQ_ERR_SEAT_ID_INV:
                                 strcat(result," IID\n");
                                 break;
-                        case -4:
+                        case REQ_ERR_PARAM_OTHER:
                                 strcat(result," ERR\n");
                                 break;
-                        case -5:
+                        case REQ_ERR_UNNAV_SEAT:
                                 strcat(result," NAV\n");
                                 break;
-                        case -6:
+                        case REQ_ERR_ROOM_FULL:
                                 strcat(result," FUL\n");
                                 break;
                         default:
