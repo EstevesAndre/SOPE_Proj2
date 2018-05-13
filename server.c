@@ -211,12 +211,7 @@ FILE* createRequestFifo()
 void parseRequest(request* r, char* info, int n_seats)
 {
         r->error_status = 0;
-        char * delim_1 = strtok(info, " ");
-        if(delim_1 == NULL)
-        {
-                r->error_status = REQ_ERR_PARAM_OTHER;
-                return;
-        }
+
         r->client_id = strtol(info, NULL, 10);
         if(r->client_id == 0)
         {
@@ -224,44 +219,35 @@ void parseRequest(request* r, char* info, int n_seats)
                 return;
         }
 
-        char * delim_2 = strtok(NULL, " ");
-        if(delim_2 == NULL)
+        char* pos = info;
+
+        while(*pos != ' ')
         {
-                r->error_status = REQ_ERR_PARAM_OTHER;
-                return;
+                pos++;
         }
-        r->n_seats = strtol(delim_2, NULL, 10);
+        pos++;
+
+        r->n_seats = strtol(pos, NULL, 10);
         if(r->n_seats == 0)
         {
                 r->error_status = REQ_ERR_PARAM_OTHER;
                 return;
         }
 
-        delim_1 = delim_2;
-        delim_2 = strtok(NULL, " ");
-
-        r->array_cnt = 0;
-        r->seats = malloc(0);
-
-        while(delim_2 != NULL)
+        while(*pos != ' ')
         {
-                int i = strtol(delim_1, NULL, 10);
-                if(i == 0)
-                {
-                        r->error_status = REQ_ERR_PARAM_OTHER;
-                        return;
-                }
-                r->array_cnt++;
-                r->seats = realloc(r->seats, r->array_cnt * sizeof(int));
-                r->seats[r->array_cnt - 1] = i;
-                delim_1 = delim_2;
-                delim_2 = strtok(NULL, " ");
+                pos++;
         }
+        pos++;
 
-        /*int i = strtol(delim_1, NULL, 10);
-           r->array_cnt++;
-           r->seats = realloc(r->seats, r->array_cnt * sizeof(int));
-           r->seats[r->array_cnt - 1] = i;*/
+        r->seats = malloc(sizeof(int) * MAX_CLI_SEATS);
+        r->array_cnt = 0;
+        int c, bytesread;
+        while (sscanf(pos, "%d%n", &c, &bytesread) > 0) 
+        {
+                *(r->seats + (r->array_cnt++)) = c;
+                pos += bytesread;
+        }
 
         requestErrorChk(r, n_seats);
 }
