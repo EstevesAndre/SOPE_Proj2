@@ -76,8 +76,8 @@ int main(int argc, char *argv[])
                                         {
                                                 for (i=1; i<=n_offices; i++)
                                                 {
-                                                        char numb[33];
-                                                        sprintf(numb,"%02d", i);
+                                                        char numb[3]; // 2 caracteres
+                                                        sprintf(numb, sizeof numb, "%02d", i);
 
                                                         char* ch = "-CLOSED";
                                                         char* result = malloc(strlen(ch) + strlen(numb) + 2);
@@ -108,8 +108,8 @@ int main(int argc, char *argv[])
                         {
                                 for (i=1; i<=n_offices; i++)
                                 {
-                                        char numb[33];
-                                        sprintf(numb,"%02d", i);
+                                        char numb[3];
+                                        snprintf(numb, sizeof numb, "%02d", i);
 
                                         char* ch = "-CLOSED";
                                         char* result = malloc(strlen(ch) + strlen(numb) + 2);
@@ -302,7 +302,7 @@ void requestHandle(Seat* seats, request* r)
 {
         if(r->error_status != 0)
         {
-                sendMessagetoClient(r, r->error_status, NULL);
+                sendMessagetoClient(r, r->error_status, NULL, NULL);
                 return;
         }
 
@@ -321,7 +321,7 @@ void requestHandle(Seat* seats, request* r)
                                 freeSeat(seats, reserved_seats[i]);
                                 i++;
                         }
-                        sendMessagetoClient(r, REQ_ERR_UNNAV_SEAT, NULL);
+                        sendMessagetoClient(r, REQ_ERR_UNNAV_SEAT, NULL,NULL);
                         return;
                 }
 
@@ -342,19 +342,20 @@ void requestHandle(Seat* seats, request* r)
         char message2log[1000];
 
         snprintf(message, 1000, "%d", r->n_seats);
-
+        strcpy(message2log,"");
         int i;
         for(i = 0; i < reserve_cnt; i++)
         {
                 snprintf(aux, 8, " %d",reserved_seats[i]);
                 strcat(message, aux);
 
-                snprintf(nrseat, 6, " %d",reserved_seats[i]);
+                snprintf(nrseat, 6, " %04d",reserved_seats[i]);
                 strcat(message2log,nrseat);
 
         }
 
         strcat(message, "\n");
+        strcat(message2log, "\n");
         sendMessagetoClient(r, REQ_SUCCESSFUL, message, message2log);
 }
 
@@ -398,14 +399,14 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
         if(descrit_slog != -1)
         {
                 char* store_nr = "99";
-                char* ch = '-';
-                char* twoPoints = ':';
+                char* ch = "-";
+                char* twoPoints = ":";
 
                 char idClient[WIDTH_PID+1];
                 snprintf(idClient, WIDTH_PID+1, "%lu", (unsigned long)r->client_id); // 5 digits
 
-                char* nr_Seats[3];
-                snprintf(nr_Seats, 3, "%lu", r->n_seats); // 2 digits
+                char nr_Seats[3];
+                snprintf(nr_Seats, 3, "%02d", r->n_seats); // 2 digits
 
                 int tmh = 4;
                 if(msg != NULL)
@@ -418,16 +419,17 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
                 strcat(result,ch);
                 strcat(result,idClient);
                 strcat(result,ch);
+                strcat(result,nr_Seats);
                 strcat(result,twoPoints);
 
                 int i;
 
-                char* space = ' ';
+                char* space = " ";
                 for(i = 0; i < r->n_seats; i++)
                 {
                         strcat(result,space);
-                        char* number_Seat[WIDTH_SEAT + 1]
-                        snprintf(number_Seat, WIDTH_SEAT + 1, "%d", *(r->seats + i));
+                        char number_Seat[WIDTH_SEAT + 1];
+                        snprintf(number_Seat, WIDTH_SEAT + 1, "%04d", *(r->seats + i));
                         strcat(result, number_Seat);
                 }
                 for(i = 0; i < WIDTH_XXNN - r->n_seats; i++)
@@ -436,30 +438,32 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
                 strcat(result,space);
                 strcat(result,ch);
 
-                switch (error_status) {
-                case -1:
-                        strcat(result," MAX\n");
-                        break;
-                case -2:
-                        strcat(result," NST\n");
-                        break;
-                case -3:
-                        strcat(result," IID\n");
-                        break;
-                case -4:
-                        strcat(result," ERR\n");
-                        break;
-                case -5:
-                        strcat(result," NAV\n");
-                        break;
-                case -6:
-                        strcat(result," FUL\n");
-                        break;
-                default:
-                        break;
+                if(msg == NULL)
+                {
+                        switch (error_status) {
+                        case -1:
+                                strcat(result," MAX\n");
+                                break;
+                        case -2:
+                                strcat(result," NST\n");
+                                break;
+                        case -3:
+                                strcat(result," IID\n");
+                                break;
+                        case -4:
+                                strcat(result," ERR\n");
+                                break;
+                        case -5:
+                                strcat(result," NAV\n");
+                                break;
+                        case -6:
+                                strcat(result," FUL\n");
+                                break;
+                        default:
+                                break;
+                        }
                 }
-
-                if(msg != NULL)
+                else
                 {
                         strcat(result,msg2log);
                 }
