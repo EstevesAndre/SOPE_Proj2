@@ -24,14 +24,19 @@ int main(int argc, char *argv[])
         alarm(open_time);
 
         int fd = open("requests", O_WRONLY | O_NONBLOCK);
+        if(fd == -1)
+        {
+                exit(1);
+        }
         requests_fd = fdopen(fd, "w");
 
         snprintf(ans_name, 100, "ans%lu", (unsigned long)getpid());
         mkfifo(ans_name, 0660);
-        fd = open(ans_name, O_RDONLY | O_NONBLOCK);
-        answer_fd = fdopen(fd, "r");
 
         sendMessage(requests_fd, n_seats, seats_list);
+
+        fd = open(ans_name, O_RDONLY);
+        answer_fd = fdopen(fd, "r");
         
         char* reserve = malloc(100 * sizeof(char));
 
@@ -102,20 +107,29 @@ void sendMessage(FILE* fd, int n_seats, char* seats_list)
 {
         char message[200];
         snprintf(message, 200, "%d %d %s", getpid(), n_seats, seats_list);
+        setbuf(fd, NULL);
         fprintf(fd, "%s", message);
 }
 
 void printReserve(char* reserve)
 {
-        char * delim_1 = strtok(reserve, " ");
         int n_seats = strtol(reserve, NULL, 10);
 
+        char* seats = reserve;
+
+        while(*seats!= ' ')
+        {
+                seats++;
+        }
+        seats++;
+
         printf("Number of seats reserved: %d\n", n_seats);
-        printf("Seats reserved: %s", delim_1);
+        printf("Seats reserved: %s", seats);
 }
 
 void printError(int return_status)
 {
+        printf("%d\n", return_status);
         printf("Failed to reserve seats: ");
         switch(return_status)
         {

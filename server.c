@@ -66,7 +66,6 @@ int main(int argc, char *argv[])
                 if(k != NULL)
                 {
                         parseRequest(&r, info, n_seats);
-
                         while(buffer != NULL)
                         {
                                 if (time(NULL) > start + open_time)
@@ -99,7 +98,6 @@ int main(int argc, char *argv[])
                                 }
                         }
                         buffer = &r;
-                        r.error_status = 0;
                 }
 
                 if (time(NULL) > start + open_time)
@@ -197,6 +195,7 @@ FILE* createRequestFifo()
 
 void parseRequest(request* r, char* info, int n_seats)
 {
+        r->error_status = 0;
         char * delim_1 = strtok(info, " ");
         if(delim_1 == NULL)
         {
@@ -244,10 +243,10 @@ void parseRequest(request* r, char* info, int n_seats)
                 delim_2 = strtok(NULL, " ");
         }
 
-        int i = strtol(delim_1, NULL, 10);
+        /*int i = strtol(delim_1, NULL, 10);
         r->array_cnt++;
         r->seats = realloc(r->seats, r->array_cnt * sizeof(int));
-        r->seats[r->array_cnt - 1] = i;
+        r->seats[r->array_cnt - 1] = i;*/
 
         requestErrorChk(r, n_seats);
 }
@@ -386,7 +385,7 @@ void freeSeat(Seat *seats, int seatNum)
 }
 
 void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
-{
+{      
         char ans_name[100];
         snprintf(ans_name, 100, "ans%lu", (unsigned long)r->client_id);
 
@@ -395,7 +394,8 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
 
         char aux[8];
         snprintf(aux, 8, "%d", error_status);
-        fprintf(answer_fd, "%s", aux);
+        setbuf(answer_fd, NULL);
+        fprintf(answer_fd, "%s\n", aux);
 
         if(msg != NULL)
         {
