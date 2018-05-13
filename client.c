@@ -10,7 +10,8 @@
 #include "client.h"
 #include "constants.h"
 
-int requests_fd, answer_fd;
+FILE* requests_fd, *answer_fd;
+char ans_name[100];
 
 int main(int argc, char *argv[])
 {
@@ -22,31 +23,33 @@ int main(int argc, char *argv[])
 
         alarm(open_time);
 
-        requests_fd = open("requests", O_WRONLY | O_NONBLOCK);
+        int fd = open("requests", O_WRONLY | O_NONBLOCK);
+        requests_fd = fdopen(fd, "w");
 
-        char ans_name[100];
         snprintf(ans_name, 100, "ans%lu", (unsigned long)getpid());
         mkfifo(ans_name, 0660);
+        fd = open(ans_name, O_RDONLY | O_NONBLOCK);
+        answer_fd = fdopen(fd, "r");
 
         sendMessage(requests_fd, n_seats, seats_list);
-
-        answer_fd = open(ans_name, O_RDONLY);
-
+        
         char* reserve = malloc(100 * sizeof(char));
 
-        read(answer_fd, reserve, 100);
+        fgets(reserve, 100, answer_fd);
 
         long return_status = strtol(reserve, NULL, 10);
 
         if(return_status == REQ_SUCCESSFUL)
         {
-                read(answer_fd, reserve, 100);
+                fgets(reserve, 100, answer_fd);
                 printReserve(reserve);
+                remove(ans_name);
                 return 0;
         }
         else
         {
                 printError(return_status);
+                remove(ans_name);
                 return return_status;
         }
 
@@ -88,23 +91,24 @@ void client_argchk(int argc, char* argv[], int* open_time, int* n_seats, char* s
 
 void timeout(int signo)
 {
-        close(requests_fd);
-        close(answer_fd);
+        //fclose(requests_fd);
+        //fclose(answer_fd);
+        remove(ans_name);
         printf("Timed out - no response from server.\n");
         exit(2);
 }
 
-void sendMessage(int fd, int n_seats, char* seats_list)
+void sendMessage(FILE* fd, int n_seats, char* seats_list)
 {
         char message[200];
         snprintf(message, 200, "%d %d %s", getpid(), n_seats, seats_list);
-        write(fd, message, 200);
+        fprintf(fd, "%s", message);
 }
 
 void printReserve(char* reserve)
 {
         char * delim_1 = strtok(reserve, " ");
-        int n_seats = strtol(reserve, &delim_1, 10);
+        int n_seats = strtol(reserve, NULL, 10);
 
         printf("Number of seats reserved: %d\n", n_seats);
         printf("Seats reserved: %s", delim_1);

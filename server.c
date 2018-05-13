@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
         descrit_slog = open(server_logfile, O_WRONLY | O_APPEND | O_CREAT, 0644);
 
         int i;
-
         for (i=1; i<=n_offices; i++)
         {
                 if(descrit_slog != -1)
@@ -58,13 +57,13 @@ int main(int argc, char *argv[])
                 pthread_create(&offices[i-1], NULL, office_f, seats);
         }
 
-        int requests = createRequestFifo();
+        FILE* requests = createRequestFifo();
         request r;
 
         while(1) {
                 char* info = malloc(100 * sizeof(char));
-                int i = read(requests, info, 100);
-                if(i != -1)
+                char* k = fgets(info, 100, requests);
+                if(k != NULL)
                 {
                         parseRequest(&r, info, n_seats);
 
@@ -73,9 +72,11 @@ int main(int argc, char *argv[])
                                 if (time(NULL) > start + open_time)
                                 {
                                         printf("Timeout. Server closing.\n");
-                                        close(requests);
+                                        fclose(requests);
+                                        remove("requests");
                                         if(descrit_slog != -1)
                                         {
+                                                
                                                 for (i=1; i<=n_offices; i++)
                                                 {
                                                         char numb[3]; // 2 caracteres
@@ -104,7 +105,8 @@ int main(int argc, char *argv[])
                 if (time(NULL) > start + open_time)
                 {
                         printf("Timeout. Server closing.\n");
-                        close(requests);
+                        fclose(requests);
+                        remove("requests");
 
                         if(descrit_slog != -1)
                         {
@@ -180,16 +182,17 @@ void initSeats(int seats[], int n_seats)
         }
 }
 
-int createRequestFifo()
+FILE* createRequestFifo()
 {
         mkfifo("requests",0660);
-        int fd = open("requests",O_RDONLY | O_NONBLOCK);
-        if(fd == -1)
+        int fd = open("requests", O_RDONLY | O_NONBLOCK);
+        FILE* f = fdopen(fd, "r");
+        if(f == NULL)
         {
                 printf("Failed to create requests fifo\n");
                 exit(2);
         }
-        return fd;
+        return f;
 }
 
 void parseRequest(request* r, char* info, int n_seats)
@@ -284,6 +287,7 @@ void requestErrorChk(request* r, int n_seats)
 
 void *office_f(void *nr)
 {
+
         while(1)
         {
                 pthread_mutex_lock(&mut);
@@ -385,18 +389,20 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
 {
         char ans_name[100];
         snprintf(ans_name, 100, "ans%lu", (unsigned long)r->client_id);
-        int answer_fd = open(ans_name, O_WRONLY);
+
+        int fd = open(ans_name, O_WRONLY | O_NONBLOCK);
+        FILE* answer_fd = fdopen(fd, "w");
 
         char aux[8];
         snprintf(aux, 8, "%d", error_status);
-        write(answer_fd, aux, 8);
+        fprintf(answer_fd, "%s", aux);
 
         if(msg != NULL)
         {
-                write(answer_fd, msg, 1000);
+                fprintf(answer_fd, "%s", msg);
         }
 
-        close(answer_fd);
+        //fclose(answer_fd);
 
         if(descrit_slog != -1)
         {
