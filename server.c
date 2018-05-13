@@ -124,7 +124,6 @@ int main(int argc, char *argv[])
                                 write(descrit_slog,end,strlen(end));
                                 close(descrit_slog);
                         }
-
                         exit(0);
                 }
         }
