@@ -1,9 +1,15 @@
 #ifndef _SERVER_H
 #define _SERVER_H
 
-#include <pthread.h> 
+#include <pthread.h>
+
 #include "request.h"
 #include "constants.h"
+
+struct arg_thread {
+        int idThread;
+        Seat seats[];
+};
 
 void server_argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* open_time);
 void initSeats(int seats[], int n_seats);
@@ -15,6 +21,6 @@ void requestHandle(Seat* seats, request* r);
 int isSeatFree(Seat *seats, int seatNum);
 void bookSeat(Seat *seats, int seatNum, int clientId);
 void freeSeat(Seat *seats, int seatNum);
-void sendMessagetoClient(int clientId, int error_status, char* msg);
+void sendMessagetoClient(int clientId, int error_status, char* msg, char* msg2log);
 
 #endif
