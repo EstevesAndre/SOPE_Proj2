@@ -6,10 +6,6 @@
 #include "request.h"
 #include "constants.h"
 
-struct arg_thread {
-        int idThread;
-        Seat seats[];
-};
 
 void server_argchk(int argc, char* argv[], int* n_seats, int* n_offices, int* open_time);
 void initSeats(int seats[], int n_seats);

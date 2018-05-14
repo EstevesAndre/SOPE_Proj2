@@ -243,7 +243,7 @@ void parseRequest(request* r, char* info, int n_seats)
         r->seats = malloc(sizeof(int) * MAX_CLI_SEATS);
         r->array_cnt = 0;
         int c, bytesread;
-        while (sscanf(pos, "%d%n", &c, &bytesread) > 0) 
+        while (sscanf(pos, "%d%n", &c, &bytesread) > 0)
         {
                 *(r->seats + (r->array_cnt++)) = c;
                 pos += bytesread;
@@ -360,8 +360,11 @@ void requestHandle(Seat* seats, request* r)
 
                 if(descrit_sbook != -1)
                 {
-                        char * sbooklog = malloc(strlen(nrseat)+ 2);
-                        strcpy(sbooklog,nrseat);
+                        char number_Seat[4 + 1];
+
+                        snprintf(number_Seat, 4 + 1, "%04d", reserved_seats[i]);
+                        char * sbooklog = malloc(strlen(number_Seat)+ 2);
+                        strcpy(sbooklog,number_Seat);
                         strcat(sbooklog,"\n");
                         write(descrit_sbook,sbooklog,strlen(sbooklog));
                 }
@@ -428,7 +431,7 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
                         tmh = strlen(msg2log);
 
                 char* result = malloc(3*strlen(ch) + strlen(store_nr) + strlen(idClient) + strlen(nr_Seats) +
-                                      strlen(twoPoints) + 26 + tmh + 2);
+                                      strlen(twoPoints) + MAX_CLI_SEATS * 5 + 1 + tmh + 2);
 
                 strcpy(result,store_nr);
                 strcat(result,ch);
@@ -440,14 +443,14 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
                 int i;
 
                 char* space = " ";
-                for(i = 0; i < r->n_seats; i++)
+                for(i = 0; i < r->array_cnt; i++)
                 {
                         strcat(result,space);
                         char number_Seat[WIDTH_SEAT + 1];
                         snprintf(number_Seat, WIDTH_SEAT + 1, "%04d", *(r->seats + i));
                         strcat(result, number_Seat);
                 }
-                for(i = 0; i < WIDTH_XXNN - r->n_seats; i++)
+                for(i = 0; i < MAX_CLI_SEATS - r->array_cnt; i++)
                         strcat(result,"     ");
 
                 strcat(result,space);
