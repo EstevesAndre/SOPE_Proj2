@@ -15,18 +15,18 @@
 pthread_mutex_t mut=PTHREAD_MUTEX_INITIALIZER;
 request* buffer;
 int occupied_seats;
-
+int n_seats;
 int descrit_slog = -1;
 int descrit_sbook = -1;
 
 int main(int argc, char *argv[])
 {
         time_t start = time(NULL);
-        int n_seats, n_offices, open_time;
+        int n_offices, open_time;
 
         server_argchk(argc, argv, &n_seats, &n_offices, &open_time);
 
-        Seat seats[n_seats];
+        Seat seats[n_seats+1];
         initSeats(seats, n_seats);
 
         pthread_t offices[n_offices];
@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
 
                         write(descrit_slog,result,strlen(result));
                 }
+                seats[n_seats] = i;
                 pthread_create(&offices[i-1], NULL, office_f, seats);
         }
 
@@ -295,6 +296,13 @@ void *office_f(void *nr)
                 {
                         request* r = buffer;
                         buffer = NULL;
+
+                        if(descrit_slog != -1)
+                        {
+                                char store_nr[3];
+                                snprintf(store_nr, 3, "%02d", *((Seat*) nr + n_seats));
+                                write(descrit_slog, store_nr, strlen(store_nr));
+                        }
                         requestHandle((Seat*) nr, r);
                         DELAY();
                         pthread_mutex_unlock(&mut);
@@ -416,7 +424,6 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
 
         if(descrit_slog != -1)
         {
-                char* store_nr = "99";
                 char* ch = "-";
                 char* twoPoints = ":";
 
@@ -430,10 +437,9 @@ void sendMessagetoClient(request* r, int error_status, char* msg, char *msg2log)
                 if(msg != NULL)
                         tmh = strlen(msg2log);
 
-                char* result = malloc(3*strlen(ch) + strlen(store_nr) + strlen(idClient) + strlen(nr_Seats) +
+                char* result = malloc(3*strlen(ch) + strlen(idClient) + strlen(nr_Seats) +
                                       strlen(twoPoints) + MAX_CLI_SEATS * 5 + 1 + tmh + 2);
 
-                strcpy(result,store_nr);
                 strcat(result,ch);
                 strcat(result,idClient);
                 strcat(result,ch);
