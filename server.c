@@ -246,7 +246,8 @@ void parseRequest(request* r, char* info, int n_seats)
         int c, bytesread;
         while (sscanf(pos, "%d%n", &c, &bytesread) > 0)
         {
-                *(r->seats + (r->array_cnt++)) = c;
+                *(r->seats + (r->array_cnt)) = c;
+                r->array_cnt++;
                 pos += bytesread;
         }
 

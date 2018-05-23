@@ -16,6 +16,6 @@
 #define REQ_ERR_ROOM_FULL -6
 
 #define Seat int
-#define DELAY() sleep(1)
+#define DELAY() usleep(50000)
 
 #endif

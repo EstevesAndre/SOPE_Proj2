@@ -132,7 +132,7 @@ void timeout(int signo)
 void sendMessage(FILE* fd, int n_seats, char* seats_list)
 {
         char message[200];
-        snprintf(message, 200, "%d %d %s", getpid(), n_seats, seats_list);
+        snprintf(message, 200, "%d %d %s\n", getpid(), n_seats, seats_list);
         setbuf(fd, NULL);
         fprintf(fd, "%s", message);
 }
@@ -210,7 +210,6 @@ void printReserve(char* reserve)
 
 void printError(int return_status)
 {
-        printf("%d\n", return_status);
         printf("Failed to reserve seats: ");
 
         char* result = malloc(6);
